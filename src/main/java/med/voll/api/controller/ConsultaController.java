@@ -1,0 +1,29 @@
+package med.voll.api.controller;
+
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import med.voll.api.domain.consulta.DadosAgendamentoConsulta;
+import med.voll.api.domain.consulta.DadosDetalhamentoConsulta;
+import med.voll.api.service.ConsultaService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("consultas")
+@RequiredArgsConstructor
+@SecurityRequirement(name = "bearer-key")
+public class ConsultaController {
+    private final ConsultaService service;
+
+    @PostMapping
+    @Transactional
+    public ResponseEntity agendar(@RequestBody @Valid DadosAgendamentoConsulta dados){
+        var dto = service.agendar(dados);
+        return ResponseEntity.ok(dto);
+    }
+}
