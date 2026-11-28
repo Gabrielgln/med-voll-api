@@ -1,5 +1,7 @@
 package med.voll.api.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -12,10 +14,15 @@ import med.voll.api.domain.medico.Medico;
 import med.voll.api.repository.MedicoRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("medicos")
@@ -23,6 +30,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 @SecurityRequirement(name = "bearer-key")
 public class MedicoController {
     private final MedicoRepository repository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper mapper;
 
     @PostMapping
     @Transactional
@@ -59,7 +68,16 @@ public class MedicoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DadosDetalhamentoMedico> buscar(@PathVariable Long id){
-        return ResponseEntity.ok(new DadosDetalhamentoMedico(repository.getReferenceById(id)));
+    public ResponseEntity<DadosDetalhamentoMedico> buscar(@PathVariable Long id) throws JsonProcessingException {
+        ValueOperations<String, Object> valueOps = redisTemplate.opsForValue();
+        Object jsonResult = valueOps.get(id.toString());
+        if(jsonResult != null){
+            return ResponseEntity.ok((DadosDetalhamentoMedico) jsonResult);
+        }
+
+        Medico medico = repository.getReferenceById(id);
+        DadosDetalhamentoMedico response = new DadosDetalhamentoMedico(medico);
+        valueOps.set(id.toString(), response, Duration.ofMinutes(1));
+        return ResponseEntity.ok(response);
     }
 }
